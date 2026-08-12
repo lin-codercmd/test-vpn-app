@@ -1,18 +1,20 @@
-name: Android CI Build
+name: AsteriskNG Build & Package CI
 
 on:
   push:
     branches: [ "main", "master" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build Android APKs & NDK Binaries
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -24,31 +26,51 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK & NDK
+      - name: Set up Android SDK & NDK
         uses: android-actions/setup-android@v3
         with:
-          ndk-version: "25.1.8937393" # Standard NDK version compatible with modern Xray Android clients
+          cmdline-tools-version: 11.0
+          packages: |
+            platforms;android-36
+            build-tools;36.0.0
+            ndk;26.1.10909125
+            platform-tools
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Generate Gradle Wrapper if missing
+      - name: Grant Execute Permission for Gradle Wrapper
         run: |
-          if [ ! -f "gradlew" ]; then
-            gradle wrapper --gradle-version 8.5
+          if [ -f "./gradlew" ]; then
+            chmod +x gradlew
           fi
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Prepare Signing Keystores
+        run: |
+          if [ ! -f "debug.keystore" ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          if [ ! -f "my-upload-key.jks" ]; then
+            keytool -genkey -v -keystore my-upload-key.jks -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=AsteriskNG Release,O=AsteriskNG,C=US"
+          fi
 
       - name: Build Debug & Release APKs
-        run: ./gradlew assembleDebug assembleRelease --stacktrace
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: android
+          KEY_PASSWORD: android
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
+          else
+            gradle assembleDebug assembleRelease --no-daemon --stacktrace
+          fi
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: asteriskng-apks
+          name: AsteriskNG-Build-Outputs
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
-            **/build/outputs/apk/**/*.apk
+          retention-days: 14

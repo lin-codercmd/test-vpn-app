@@ -1,0 +1,6 @@
+{
+  "name": "AsteriskNG",
+  "description": "High-performance Xray-core proxy client featuring advanced run modes, real-time latency testing, and modern Material 3 design.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

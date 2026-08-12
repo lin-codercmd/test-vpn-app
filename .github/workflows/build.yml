@@ -56,9 +56,9 @@ jobs:
           KEY_PASSWORD: android
         run: |
           if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
+            ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace -Pksp.incremental=false -Pksp.use.worker.api=false
           else
-            gradle assembleDebug assembleRelease --no-daemon --stacktrace
+            gradle assembleDebug assembleRelease --no-daemon --stacktrace -Pksp.incremental=false -Pksp.use.worker.api=false
           fi
 
       - name: Upload APK Artifacts
